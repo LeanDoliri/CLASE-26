@@ -131,7 +131,7 @@ app.get('/data', isAuth, (req, res)=>{
     res.render('/data', {contador: req.user.contador, datos: userData})
 });
 
-
+    
 // app.post('/register', (req, res) => {
 //     const {nombre, password, direccion} = req.body;
 //     const user = usuariosDB.find(usr => usr.nombre == nombre)
