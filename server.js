@@ -1,38 +1,37 @@
-import express from 'express';
-import session from 'express-session';
+import express from "express";
+import session from "express-session";
 import exphbs from 'express-handlebars';
 import path from 'path';
 import dotenv from 'dotenv';
 dotenv.config();
-import passport from 'passport';
-import { Strategy } from 'passport-local';
-const localStrategy = Strategy;
+import passport from "passport";
+import { Strategy } from "passport-local";
+const LocalStrategy = Strategy;
 
 const app = express();
 
 /*============================[Middlewares]============================*/
-app.use(express.urlencoded({extended: true}));
-app.use(express.json());
 
-passport.use(new localStrategy(
-    async function(username, password, done){
-        const user = await usuariosDB.find(usr => usr.nombre == username);
 
-        if (!usuario) {
+passport.use(new LocalStrategy(
+    async function (username, password, done) {
+        const existeUsuario = await usuariosDB.find(usuario => usuario.nombre == username);
+
+        if (!existeUsuario) {
             return done(null, false);
         } else {
-            return done(null, user);
+            return done(null, existeUsuario);
         }
     }
 ));
 
-passport.serializeUser((user, done) =>{
-    done (null, user.name)
-})
+passport.serializeUser((usuario, done) => {
+    done(null, usuario.nombre);
+});
 
-passport.deserializeUser((nombre, done) =>{
-    const user = usuariosDB.find(usr => usr.nombre == nombre)
-    done (null, user)
+passport.deserializeUser((nombre, done) => {
+    const existeUsuario = usuariosDB.find(usuario => usuario.nombre == nombre);
+    done(null, existeUsuario);
 });
 
 /*----------- Session -----------*/
@@ -40,10 +39,10 @@ app.use(session({
     secret: process.env.SECRET_KEY,
     resave: false,
     saveUninitialized: false,
-    cookie:{
-        maxAge: 10000
+    cookie: {
+        maxAge: 20000 //20 seg
     }
-}))
+}));
 
 app.use(passport.initialize());
 app.use(passport.session());
@@ -55,8 +54,10 @@ app.engine('.hbs', exphbs.engine({
     layoutsDir: path.join(app.get('views'), 'layouts'),
     extname: '.hbs'
 }));
-
 app.set('view engine', '.hbs');
+
+app.use(express.urlencoded({extended: true}));
+app.use(express.json());
 
 function isAuth(req, res, next) {
     if (req.isAuthenticated()) {
@@ -97,7 +98,7 @@ app.get('/register', (req, res) => {
 //     }
 // });
 
-app.post('/login', passport.authenticate('local', {successRedirect: '/data', failureRedirect: '/login-error'}));
+app.post('/login', passport.authenticate('local', { successRedirect: '/data', failureRedirect: '/login-error' }));
 
 // app.get('/data', (req, res) => {
 //     if (req.session.nombre) {
@@ -116,21 +117,18 @@ app.post('/login', passport.authenticate('local', {successRedirect: '/data', fai
 //     }
 // });
 
-app.get('/data', isAuth, (req, res)=>{
+app.get('/data', isAuth, (req, res) => {
     if (!req.user.contador) {
-        req.user.contador = 1;
+        req.user.contador = 1
     } else {
-        req.user.contador ++;
+        req.user.contador++
     }
-
-    const userData = {
+    const datosUsuario = {
         nombre: req.user.nombre,
         direccion: req.user.direccion
     }
-
-    res.render('/data', {contador: req.user.contador, datos: userData})
-});
-
+    res.render('data', { contador: req.user.contador, datos: datosUsuario });
+})
     
 // app.post('/register', (req, res) => {
 //     const {nombre, password, direccion} = req.body;
@@ -144,18 +142,17 @@ app.get('/data', isAuth, (req, res)=>{
 //     }
 // });
 
-app.post('/register', (req, res) =>{
-    const {nombre, password, direccion} = req.body;
+app.post('/register', (req, res) => {
+    const { nombre, password, direccion } = req.body;
 
-    const user = usuariosDB.find(usr => usr.nombre == nombre)
-
-    if (user) {
-        res.render('register-error.hbs');
+    const newUsuario = usuariosDB.find(usuario => usuario.nombre == nombre);
+    if (newUsuario) {
+        res.render('register-error')
     } else {
-        usuariosDB.push({nombre, password: password, direccion});
-        res.redirect('/login');
+        usuariosDB.push({ nombre, password: password, direccion });
+        res.redirect('/login')
     }
-});
+})
 
 app.get('/logout', (req, res) => {
     req.session.destroy(err =>{
@@ -166,12 +163,16 @@ app.get('/logout', (req, res) => {
         }
     });
 });
+
+app.get('/login-error', (req, res) => {
+    res.render('login-error');
+});
 /*============================[Servidor]============================*/
 
 const PORT = process.env.PORT;
-const server = app.listen(PORT, ()=>{
-    console.log(`Servidor ok en el puerto ${PORT}`);
-});
+const server = app.listen(PORT, () => {
+    console.log(`Servidor escuchando en puerto ${PORT}`);
+})
 server.on('error', error => {
     console.error(`Error en el servidor ${error}`);
 });
